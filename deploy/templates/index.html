@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Churn Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, var(--bg-color) 0%, #1e1b4b 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Glassmorphism Container */
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 800px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin-top: 0;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+        }
+
+        input[type="number"], select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input[type="number"]:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        select option {
+            background: var(--bg-color);
+        }
+
+        .btn-predict {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 10px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .btn-predict:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-predict:active {
+            transform: translateY(0);
+        }
+
+        /* Result Panel */
+        #result-panel {
+            display: none;
+            grid-column: 1 / -1;
+            margin-top: 20px;
+            padding: 24px;
+            border-radius: 16px;
+            text-align: center;
+            animation: slideDown 0.4s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .result-prob {
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .churn-yes {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .churn-no {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+        
+        .loader {
+            display: none;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Churn Predictor</h1>
+        <p class="subtitle">Enter customer details to predict the likelihood of churn.</p>
+
+        <form id="prediction-form" class="form-grid">
+            
+            <div class="input-group">
+                <label for="tenure">Tenure (Months)</label>
+                <input type="number" id="tenure" required placeholder="e.g. 12" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="MonthlyCharges">Monthly Charges ($)</label>
+                <input type="number" id="MonthlyCharges" required placeholder="e.g. 70.5" step="0.01">
+            </div>
+
+            <div class="input-group">
+                <label for="TotalCharges">Total Charges ($)</label>
+                <input type="number" id="TotalCharges" required placeholder="e.g. 846.0" step="0.01">
+            </div>
+
+            <div class="input-group">
+                <label for="contract">Contract Type</label>
+                <select id="contract" required>
+                    <option value="month">Month-to-Month</option>
+                    <option value="one">One Year</option>
+                    <option value="two">Two Year</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="payment">Payment Method</label>
+                <select id="payment" required>
+                    <option value="electronic">Electronic Check</option>
+                    <option value="other">Mailed / Credit Card / Bank</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="internet">Internet Service</label>
+                <select id="internet" required>
+                    <option value="fiber">Fiber Optic</option>
+                    <option value="other">DSL / No Internet</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="security">Online Security</label>
+                <select id="security" required>
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="support">Tech Support</label>
+                <select id="support" required>
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="partner">Partner</label>
+                <select id="partner" required>
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-predict" id="submit-btn">
+                <span id="btn-text">Predict Churn</span>
+                <div class="loader" id="loader"></div>
+            </button>
+
+            <div id="result-panel">
+                <div class="result-title" id="result-text">Prediction: </div>
+                <div class="result-prob" id="result-prob">0%</div>
+            </div>
+
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const btnText = document.getElementById('btn-text');
+            const loader = document.getElementById('loader');
+            const resultPanel = document.getElementById('result-panel');
+            
+            btnText.style.display = 'none';
+            loader.style.display = 'block';
+            resultPanel.style.display = 'none';
+
+            // Map inputs to the model's exact schema
+            const contractVal = document.getElementById('contract').value;
+            const payload = {
+                "tenure": parseFloat(document.getElementById('tenure').value),
+                "MonthlyCharges": parseFloat(document.getElementById('MonthlyCharges').value),
+                "TotalCharges": parseFloat(document.getElementById('TotalCharges').value),
+                "Contract_Two year": contractVal === 'two' ? 1 : 0,
+                "Contract_One year": contractVal === 'one' ? 1 : 0,
+                "PaymentMethod_Electronic check": document.getElementById('payment').value === 'electronic' ? 1 : 0,
+                "InternetService_Fiber optic": document.getElementById('internet').value === 'fiber' ? 1 : 0,
+                "OnlineSecurity_Yes": parseInt(document.getElementById('security').value),
+                "TechSupport_Yes": parseInt(document.getElementById('support').value),
+                "Partner": parseInt(document.getElementById('partner').value)
+            };
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                resultPanel.style.display = 'block';
+                resultPanel.className = data.prediction === 1 ? 'churn-yes' : 'churn-no';
+                
+                document.getElementById('result-text').innerText = data.prediction === 1 ? 'High Risk of Churn' : 'Low Risk (Loyal Customer)';
+                document.getElementById('result-prob').innerText = (data.churn_probability * 100).toFixed(1) + '%';
+                
+            } catch (error) {
+                alert('Error making prediction. Ensure the server is running.');
+            } finally {
+                btnText.style.display = 'block';
+                loader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
