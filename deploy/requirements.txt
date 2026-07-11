@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+scikit-learn
+pandas
+joblib
+pydantic
+mlflow
+evidently==0.4.17
+numpy<2.0
